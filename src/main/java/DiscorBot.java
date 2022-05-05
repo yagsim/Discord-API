@@ -147,6 +147,7 @@ public class DiscorBot {
                     }
                 }
                 if ("/listDrive".equals((message.getContent()))) {
+                    final MessageChannel channel = message.getChannel().block();
                     FileList result = null;
                     try {
                         result = service.files().list()
@@ -173,7 +174,7 @@ public class DiscorBot {
                         FileList resultImagenes = null;
                         try {
                             resultImagenes = service.files().list()
-                                    .setQ("name contains 'ralph' and parents in '" + dirImagenes + "'")
+                                    .setQ("(mimeType='image/jpg' or mimeType='image/png')  AND parents in '" + dirImagenes + "'")
                                     .setSpaces("drive")
                                     .setFields("nextPageToken, files(id, name)")
                                     .execute();
@@ -182,8 +183,58 @@ public class DiscorBot {
                         }
                         List<com.google.api.services.drive.model.File> filesImagenes = resultImagenes.getFiles();
                         for (com.google.api.services.drive.model.File file : filesImagenes) {
-                            System.out.printf("Imagen: %s\n", file.getName());
+                            channel.createMessage(file.getName()).block();
                         }
+                    }
+                }
+
+                if ("/dwlDrive".equals((message.getContent()))) {
+                    final MessageChannel channel = message.getChannel().block();
+                    FileList result = null;
+                    try {
+                        result = service.files().list()
+                                .setQ("name contains 'imagenesBot' and mimeType = 'application/vnd.google-apps.folder'")   //para mostrar solo las imagenes jpeg
+                                /*https://developers.google.com/drive/api/guides/search-files */
+
+                                .setFields("nextPageToken, files(id, name)")
+                                .execute();
+
+                        List<com.google.api.services.drive.model.File> files = result.getFiles();
+                        if (files == null || files.isEmpty()) {
+
+                            System.out.println("No files found.");
+                        } else {
+                            String dirImagenes = null;
+                            System.out.println("Files:");
+                            for (com.google.api.services.drive.model.File file : files) {
+                                System.out.printf("%s (%s)\n", file.getName(), file.getId());
+                                dirImagenes = file.getId();     //recoge la ruta del directorio de arriba
+                            }
+                            // busco la imagen en el directorio
+                            FileList resultImagenes = null;
+
+                            resultImagenes = service.files().list()
+                                    .setQ("(mimeType = 'image/png' OR mimeType = 'image/jpeg') AND parents in '" + dirImagenes + "'")
+                                    .setSpaces("drive")
+                                    .setFields("nextPageToken, files(id, name)")
+                                    .execute();
+
+
+                            List<com.google.api.services.drive.model.File> filesImagenes = resultImagenes.getFiles();
+                            for (com.google.api.services.drive.model.File file : filesImagenes) {
+                                channel.createMessage(file.getName()).block();
+                                OutputStream outputStream = null;
+
+                                outputStream = new FileOutputStream("C:\\Users\\yagos\\Downloads\\ralph2.jpeg");
+
+
+                                service.files().get(file.getId())
+                                        .executeMediaAndDownloadTo(outputStream);
+
+                            }
+                        }
+                    }catch (Exception e){
+                        System.out.println("Excepcion");
                     }
                 }
             });
