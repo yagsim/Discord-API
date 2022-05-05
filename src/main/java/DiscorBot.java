@@ -10,6 +10,7 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
+import com.google.api.services.drive.model.FileList;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
@@ -145,9 +146,46 @@ public class DiscorBot {
                         channel.createMessage("El archivo no existe").block();
                     }
                 }
+                if ("/listDrive".equals((message.getContent()))) {
+                    FileList result = null;
+                    try {
+                        result = service.files().list()
+                                .setQ("name contains 'imagenesBot' and mimeType = 'application/vnd.google-apps.folder'")   //para mostrar solo las imagenes jpeg
+                                /*https://developers.google.com/drive/api/guides/search-files */
+                                .setPageSize(10)  //para decir el numero que mostrar
 
-
-
+                                .setFields("nextPageToken, files(id, name)")
+                                .execute();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    List<com.google.api.services.drive.model.File> files = result.getFiles();
+                    if (files == null || files.isEmpty()) {
+                        System.out.println("No files found.");
+                    } else {
+                        String dirImagenes = null;
+                        System.out.println("Files:");
+                        for (com.google.api.services.drive.model.File file : files) {
+                            System.out.printf("%s (%s)\n", file.getName(), file.getId());
+                            dirImagenes = file.getId();     //recoge la ruta del directorio de arriba
+                        }
+                        // busco la imagen en el directorio
+                        FileList resultImagenes = null;
+                        try {
+                            resultImagenes = service.files().list()
+                                    .setQ("name contains 'ralph' and parents in '" + dirImagenes + "'")
+                                    .setSpaces("drive")
+                                    .setFields("nextPageToken, files(id, name)")
+                                    .execute();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        List<com.google.api.services.drive.model.File> filesImagenes = resultImagenes.getFiles();
+                        for (com.google.api.services.drive.model.File file : filesImagenes) {
+                            System.out.printf("Imagen: %s\n", file.getName());
+                        }
+                    }
+                }
             });
             gateway.onDisconnect().block();
         } catch (GeneralSecurityException e) {
@@ -156,8 +194,7 @@ public class DiscorBot {
 
         }
 
-
-
     }
 }
+
 
