@@ -71,7 +71,7 @@ public class DiscorBot {
     public static void main(String[] args) {
 
 
-        final String token="OTUzNjM0MjMwODI5NzI3ODM2.YjHbFg.2cDXCPl7Cg5-5ftPdKrYgtHJS7s" ;
+        final String token="OTUzNjM0MjMwODI5NzI3ODM2.G-JwNE.JeVU7NDFv2f5trmHcs6ly0_fQAX_syML2aD5cA" ;
         final DiscordClient client = DiscordClient.create(token);
         final GatewayDiscordClient gateway = client.login().block();
         // Build a new authorized API client service.
@@ -174,7 +174,7 @@ public class DiscorBot {
                         FileList resultImagenes = null;
                         try {
                             resultImagenes = service.files().list()
-                                    .setQ("(mimeType='image/jpg' or mimeType='image/png')  AND parents in '" + dirImagenes + "'")
+                                    .setQ("(mimeType='image/jpg' or mimeType='image/png' or mimeType='image/jpg')  AND parents in '" + dirImagenes + "'")
                                     .setSpaces("drive")
                                     .setFields("nextPageToken, files(id, name)")
                                     .execute();
@@ -237,7 +237,64 @@ public class DiscorBot {
                         System.out.println("Excepcion");
                     }
                 }
+                if("/pdf".equals((message.getContent()))) {
+                    final MessageChannel channel = message.getChannel().block();
+                    FileList result = null;
+                    try {
+
+                        result = service.files().list()
+                                .setQ("name contains 'imagenesBot' and mimeType = 'application/vnd.google-apps.folder'")   //para mostrar solo las documentos de microsoft
+                                /*https://developers.google.com/drive/api/guides/search-files */
+
+                                .setFields("nextPageToken, files(id, name)")
+                                .execute();
+
+                        List<com.google.api.services.drive.model.File> files = result.getFiles();
+                        if (files == null || files.isEmpty()) {
+
+                            System.out.println("No files found.");
+                        } else {
+                            String dirDoc = null;
+                            System.out.println("Files:");
+                            for (com.google.api.services.drive.model.File file : files) {
+                                System.out.printf("%s (%s)\n", file.getName(), file.getId());
+                                dirDoc = file.getId();     //recoge la ruta del directorio de arriba
+                            }
+
+                            FileList resultDoc = null;
+
+                            resultDoc = service.files().list()
+                                    .setQ("( mimeType='application/vnd.google-apps.document') AND parents in '" + dirDoc + "'")
+                                    .setSpaces("drive")
+                                    .setFields("nextPageToken, files(id, name)")
+
+                                    .execute();
+
+
+                            List<com.google.api.services.drive.model.File> filesDoc = resultDoc.getFiles();
+                            for (com.google.api.services.drive.model.File file : filesDoc) {
+                                channel.createMessage(file.getName()).block();
+
+                                OutputStream outputStream = new FileOutputStream(new java.io.File("C:\\Users\\yagos\\Downloads\\yago.pdf"+file.getName()),true);
+
+                                service.files().export(file.getId(), "application/pdf")
+                                        .executeMediaAndDownloadTo(outputStream);
+                                outputStream = new FileOutputStream("C:\\Users\\yagos\\Downloads\\yago.pdf");
+
+
+                                service.files().get(file.getId())
+                                        .executeMediaAndDownloadTo(outputStream);
+
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Excepción");
+                    }
+                }
+
+
             });
+
             gateway.onDisconnect().block();
         } catch (GeneralSecurityException e) {
 
